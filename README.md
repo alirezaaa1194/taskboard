@@ -2,6 +2,10 @@
 
 A production-ready task board application with secure authentication, role-based authorization, and a modern frontend.
 
+## Demo Video
+
+Watch the project demo (Persian, 5 min): https://drive.google.com/file/d/1qphIE-0c32DTK4kGadnXwnatEELQe5Cv/view?usp=sharing
+
 ## Tech Stack
 
 | Area     | Technology                                                        |
