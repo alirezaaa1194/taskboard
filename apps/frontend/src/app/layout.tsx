@@ -1,10 +1,9 @@
-import AppProviderComp from "../providers/general";
+import { getCurrentUser } from "../lib/serverOnly";
+import GeneralProvider from "../providers/generalProvider";
 import { getCookie } from "../scripts/cookie";
 import { ThemeType } from "../types/general";
 import "./globals.css";
 import localFont from "next/font/local";
-
-export const instant = false;
 
 const vazir = localFont({
   src: [
@@ -17,12 +16,18 @@ const vazir = localFont({
   display: "swap",
 });
 
+export const instant = false;
+
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const theme = ((await getCookie("theme")) || "dark") as ThemeType;
+  const user = await getCurrentUser();
+
   return (
     <html lang="fa" dir="rtl" className={`${vazir.variable} font-sans ${theme}`}>
       <body>
-        <AppProviderComp theme={theme}>{children}</AppProviderComp>
+        <GeneralProvider user={user} theme={theme}>
+          {children}
+        </GeneralProvider>
       </body>
     </html>
   );

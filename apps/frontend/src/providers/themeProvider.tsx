@@ -7,9 +7,13 @@ export function ThemeProviderComp({ children, savedTheme }: { children: React.Re
   const [theme, setTheme] = useState<ThemeType>(savedTheme);
 
   const toggleTheme = (newTheme: ThemeType) => {
-    setCookie("theme", newTheme);
     setTheme(newTheme);
+    setCookie("theme", newTheme);
   };
 
-  return <ThemeContext value={{ theme, toggle: () => toggleTheme(theme === "dark" ? "light" : "dark") }}>{children}</ThemeContext>;
+  return (
+    <ThemeContext value={{ theme, toggle: () => toggleTheme(theme === "dark" ? "light" : "dark") }}>
+      <div className={theme}>{children}</div>
+    </ThemeContext>
+  );
 }

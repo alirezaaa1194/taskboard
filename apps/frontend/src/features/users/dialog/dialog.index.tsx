@@ -1,65 +1,86 @@
 "use client";
 
 import { Dialog, DialogPanel, DialogTitle, Switch, Transition } from "@headlessui/react";
-import { Fragment, useEffect, useState } from "react";
-import DropdownComp from "../../../utilities/components/dropdown/dropdown.index";
+import { Fragment, useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { X } from "lucide-react";
+import DropdownComp from "@/utilities/components/dropdown/dropdown.index";
+import { UserRoleEnum } from "@/types/general";
+import { UserDialogProps, userFormSchema, ROLE_OPTIONS, type UserFormInput, type UserFormValues } from "./dialog.type";
+import { useUserMutations } from "../hooks/useUserMutation";
 
-export interface UserFormData {
-  id?: string;
-  name: string;
-  email: string;
-  password?: string;
-  role: string;
-  active: boolean;
-}
+function UserDialogComp({ open, setOpen, mode, initial = null, onSuccess }: UserDialogProps) {
+  const isEdit = mode === "edit";
+  const { createUser, updateUser } = useUserMutations();
 
-interface UserDialogProps {
-  open: boolean;
-  setOpen: (v: boolean) => void;
-  mode: "create" | "edit";
-  initial?: UserFormData | null;
-  onSubmit?: (data: UserFormData) => void;
-}
-
-const ROLE_OPTIONS = ["مالک", "مدیر", "عضو"];
-
-export default function UserDialogComp({ open, setOpen, mode, initial, onSubmit }: UserDialogProps) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("عضو");
-  const [active, setActive] = useState(true);
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<UserFormInput, unknown, UserFormValues>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      role: UserRoleEnum.MEMBER,
+      isActive: true,
+    },
+  });
 
   useEffect(() => {
     if (open) {
-      if (mode === "edit" && initial) {
-        setName(initial.name);
-        setEmail(initial.email);
-        setRole(initial.role);
-        setActive(initial.active);
-        setPassword("");
+      if (isEdit && initial) {
+        reset({
+          name: initial.name,
+          email: initial.email,
+          password: "",
+          role: initial.role,
+          isActive: initial.isActive,
+        });
       } else {
-        setName("");
-        setEmail("");
-        setPassword("");
-        setRole("عضو");
-        setActive(true);
+        reset({
+          name: "",
+          email: "",
+          password: "",
+          role: UserRoleEnum.MEMBER,
+          isActive: true,
+        });
       }
     }
-  }, [open, mode, initial]);
+  }, [open, isEdit, initial, reset]);
 
-  const handleSubmit = () => {
-    onSubmit?.({
-      id: initial?.id,
-      name,
-      email,
-      password: password || undefined,
-      role,
-      active,
-    });
-    setOpen(false);
+  const mutation = isEdit ? updateUser : createUser;
+
+  const onSubmit = (values: UserFormValues) => {
+    if (isEdit && initial) {
+      // Only fields allowed for PATCH
+      const payload = {
+        name: values.name,
+        role: values.role,
+        isActive: values.isActive,
+      };
+      updateUser.mutate(
+        { id: initial.id, values: payload },
+        {
+          onSuccess: () => {
+            setOpen(false);
+            onSuccess?.();
+          },
+        },
+      );
+    } else {
+      createUser.mutate(values, {
+        onSuccess: () => {
+          setOpen(false);
+          onSuccess?.();
+        },
+      });
+    }
   };
-
   return (
     <Transition show={open} as={Fragment}>
       <Dialog onClose={setOpen} className="relative z-50">
@@ -70,55 +91,64 @@ export default function UserDialogComp({ open, setOpen, mode, initial, onSubmit 
         <div className="fixed inset-0 grid place-items-end sm:place-items-center sm:p-4">
           <Transition.Child as={Fragment} enter="transition duration-200 ease-out" enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" enterTo="opacity-100 translate-y-0 sm:scale-100" leave="transition duration-150 ease-in" leaveFrom="opacity-100 translate-y-0 sm:scale-100" leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
             <DialogPanel className="max-h-[90vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-surface p-4 sm:max-w-lg sm:rounded-lg">
-              <DialogTitle className="mb-3 font-bold">{mode === "create" ? "کاربر جدید" : "ویرایش کاربر"}</DialogTitle>
+              <div className="mb-3 flex items-center justify-between">
+                <DialogTitle className="font-bold">{isEdit ? "ویرایش کاربر" : "کاربر جدید"}</DialogTitle>
+                <button onClick={() => setOpen(false)} aria-label="بستن" className="grid size-8 place-items-center rounded-md text-muted hover:bg-border/50">
+                  <X className="size-4" />
+                </button>
+              </div>
 
-              <div className="space-y-3">
-                {/* نام */}
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
                 <div>
                   <label className="mb-1 block text-sm text-muted">نام</label>
-                  <input className="field" placeholder="نام و نام خانوادگی" value={name} onChange={(e) => setName(e.target.value)} />
+                  <input {...register("name")} className={`field ${errors.name ? "border-prio-high" : ""}`} placeholder="نام و نام خانوادگی" />
+                  {errors.name && <p className="mt-1 text-xs text-prio-high">{errors.name.message}</p>}
                 </div>
 
-                {/* ایمیل */}
                 <div>
                   <label className="mb-1 block text-sm text-muted">ایمیل</label>
-                  <input className="field" type="email" dir="ltr" placeholder="example@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <input {...register("email")} className={`field ${errors.email ? "border-prio-high" : ""}`} type="email" dir="ltr" placeholder="example@company.com" disabled={isEdit} />
+                  {errors.email && <p className="mt-1 text-xs text-prio-high">{errors.email.message}</p>}
                 </div>
 
-                {/* رمز عبور — فقط در create */}
-                {mode === "create" && (
+                {!isEdit && (
                   <div>
                     <label className="mb-1 block text-sm text-muted">رمز عبور</label>
-                    <input className="field" type="password" dir="ltr" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <input {...register("password")} className={`field ${errors.password ? "border-prio-high" : ""}`} type="password" dir="ltr" placeholder="••••••••" />
+                    {errors.password && <p className="mt-1 text-xs text-prio-high">{errors.password.message}</p>}
                   </div>
                 )}
 
-                {/* نقش */}
                 <div>
                   <label className="mb-1 block text-sm text-muted">نقش</label>
-                  <DropdownComp value={role} onChange={setRole} options={ROLE_OPTIONS} />
+                  <Controller control={control} name="role" render={({ field }) => <DropdownComp<UserRoleEnum> value={field.value} onChange={field.onChange} options={ROLE_OPTIONS} />} />
                 </div>
 
-                {/* وضعیت فعال */}
                 <div className="flex items-center justify-between rounded-md border border-border bg-bg px-3 py-2.5">
                   <span className="text-sm">وضعیت حساب</span>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs ${active ? "text-done" : "text-prio-high"}`}>{active ? "فعال" : "غیرفعال"}</span>
-                    <Switch checked={active} onChange={setActive} className={`group relative inline-flex h-6 w-11 items-center rounded-full transition ${active ? "bg-primary" : "bg-border"}`} dir="ltr">
-                      <span className={`inline-block size-4 rounded-full bg-white transition ${active ? "translate-x-6" : "translate-x-1"}`} />
-                    </Switch>
+                    <span className={`text-xs ${control._formValues.isActive ? "text-done" : "text-prio-high"}`}>{control._formValues.isActive ? "فعال" : "غیرفعال"}</span>
+                    <Controller
+                      control={control}
+                      name="isActive"
+                      render={({ field }) => (
+                        <Switch checked={field.value} onChange={field.onChange} className={`group relative inline-flex h-6 w-11 items-center rounded-full transition ${field.value ? "bg-primary" : "bg-border"}`} dir="ltr">
+                          <span className={`inline-block size-4 rounded-full bg-white transition ${field.value ? "translate-x-6" : "translate-x-1"}`} />
+                        </Switch>
+                      )}
+                    />
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-4 flex gap-2">
-                <button onClick={handleSubmit} className="rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover">
-                  {mode === "create" ? "ساخت" : "ذخیره"}
-                </button>
-                <button onClick={() => setOpen(false)} className="rounded-md px-4 py-2.5 text-sm text-muted transition hover:bg-border/50">
-                  انصراف
-                </button>
-              </div>
+                <div className="mt-4 flex gap-2">
+                  <button type="submit" disabled={mutation.isPending} className="rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50">
+                    {mutation.isPending ? "در حال ذخیره..." : isEdit ? "ذخیره تغییرات" : "ساخت کاربر"}
+                  </button>
+                  <button type="button" onClick={() => setOpen(false)} className="rounded-md px-4 py-2.5 text-sm text-muted transition hover:bg-border/50">
+                    انصراف
+                  </button>
+                </div>
+              </form>
             </DialogPanel>
           </Transition.Child>
         </div>
@@ -126,3 +156,5 @@ export default function UserDialogComp({ open, setOpen, mode, initial, onSubmit 
     </Transition>
   );
 }
+
+export default UserDialogComp;

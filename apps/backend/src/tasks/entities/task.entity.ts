@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import type { Relation } from 'typeorm';
 import { User } from '../../users/entities/user.entity.js';
@@ -24,10 +25,10 @@ export enum TaskPriority {
 
 @Entity('tasks')
 export class Task {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn('increment')
+  id: number;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', length: 255 })
   title: string;
 
   @Column({
@@ -35,6 +36,7 @@ export class Task {
     enum: TaskStatus,
     default: TaskStatus.TODO,
   })
+  @Index()
   status: TaskStatus;
 
   @Column({
@@ -52,19 +54,24 @@ export class Task {
 
   @ManyToOne(() => User, (user) => user.assignedTasks, {
     nullable: true,
+    onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'assigneeId' })
   assignee: Relation<User> | null;
 
-  @Column({ type: 'uuid', nullable: true })
-  assigneeId: string | null;
+  @Column({ type: 'int', nullable: true })
+  @Index()
+  assigneeId: number | null;
 
-  @ManyToOne(() => User, (user) => user.createdTasks)
+  @ManyToOne(() => User, (user) => user.createdTasks, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'createdById' })
   createdBy: Relation<User>;
 
-  @Column({ type: 'uuid' })
-  createdById: string;
+  @Column({ type: 'int' })
+  @Index()
+  createdById: number;
 
   @CreateDateColumn()
   createdAt: Date;

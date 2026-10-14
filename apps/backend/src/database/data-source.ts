@@ -3,32 +3,28 @@ import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { User } from '../users/entities/user.entity.js';
+import { Task } from '../tasks/entities/task.entity.js';
+import { RefreshToken } from '../auth/entities/refresh-token.entity.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// data-source.ts is in src/database/
-// backend root is two levels above this file.
+const envPath = resolve(__dirname, '../../.env');
+
 dotenv.config({
-  path: resolve(__dirname, '../../.env'),
+  path: envPath,
   override: true,
-});
-console.log({
-  envPath: resolve(__dirname, '../../.env'),
-  databaseUrl: process.env.DATABASE_URL?.replace(
-    /\/\/([^:]+):([^@]+)@/,
-    '//$1:****@',
-  ),
 });
 
 if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is not defined in apps/backend/.env');
+  throw new Error(`DATABASE_URL is not defined. Expected .env at: ${envPath}`);
 }
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
-  entities: [resolve(__dirname, '../**/*.entity{.ts,.js}')],
+  entities: [User, Task, RefreshToken],
   migrations: [resolve(__dirname, 'migrations/*{.ts,.js}')],
   synchronize: false,
 });

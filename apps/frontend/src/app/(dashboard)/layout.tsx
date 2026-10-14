@@ -1,4 +1,3 @@
-"use client";
 import LayoutHeaderComp from "@/utilities/components/header/header.index";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
